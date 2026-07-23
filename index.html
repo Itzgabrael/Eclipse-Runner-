@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Eclipse Runner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#160f2e">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Eclipse Runner">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --amber:#f6c667;
+    --cyan:#5fd9d4;
+    --violet:#3a2d6b;
+    --deepviolet:#160f2e;
+    --bluepurple:#241a4a;
+    --ember:#e8734a;
+    --ghost:#cfd2ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:#0a0714; overflow:hidden;
+    font-family:'Chakra Petch', sans-serif;
+    color:var(--ghost);
+    touch-action:none;
+    user-select:none;
+  }
+  #gameCanvas{
+    display:block; width:100%; height:100%;
+    background:#0a0714;
+  }
+  .screen{
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 30%, var(--bluepurple) 0%, var(--deepviolet) 55%, #08051a 100%);
+    z-index:20; text-align:center; padding:24px;
+  }
+  .hidden{display:none !important;}
+  .title{
+    font-family:'Cinzel', serif;
+    font-size:clamp(2.4rem, 9vw, 4.2rem);
+    letter-spacing:0.04em;
+    background:linear-gradient(180deg, var(--amber) 0%, var(--cyan) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    margin:0 0 4px 0;
+    filter:drop-shadow(0 0 18px rgba(95,217,212,0.35));
+  }
+  .subtitle{
+    font-size:0.85rem; letter-spacing:0.32em; text-transform:uppercase;
+    color:var(--cyan); opacity:0.75; margin-bottom:34px;
+  }
+  .menu-orb{
+    width:64px; height:64px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--amber), var(--ember) 60%, transparent 75%);
+    box-shadow:0 0 40px 8px rgba(246,198,103,0.45);
+    margin-bottom:24px;
+    animation:pulseGlow 2.6s ease-in-out infinite;
+  }
+  @keyframes pulseGlow{
+    0%,100%{ transform:scale(1); opacity:1;}
+    50%{ transform:scale(1.12); opacity:0.85;}
+  }
+  .btn{
+    font-family:'Chakra Petch', sans-serif;
+    font-weight:600; font-size:1rem; letter-spacing:0.08em; text-transform:uppercase;
+    padding:14px 38px; margin:7px;
+    border-radius:2px; border:1px solid rgba(207,210,255,0.35);
+    background:linear-gradient(180deg, rgba(95,217,212,0.14), rgba(58,45,107,0.3));
+    color:var(--ghost); cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .btn:active{ transform:scale(0.96); background:rgba(95,217,212,0.28); }
+  .btn.primary{
+    border-color:var(--amber);
+    box-shadow:0 0 22px rgba(246,198,103,0.25);
+  }
+  .info-block{
+    max-width:440px; font-size:0.85rem; line-height:1.65; color:rgba(207,210,255,0.65);
+    margin-top:18px; border-top:1px solid rgba(207,210,255,0.15); padding-top:16px;
+  }
+  .info-block b{ color:var(--cyan); }
+
+  /* HUD */
+  #hud{
+    position:fixed; top:0; left:0; right:0; padding:14px 18px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    z-index:10; pointer-events:none;
+  }
+  #hearts{ display:flex; gap:6px; }
+  .heart{
+    width:20px; height:18px; position:relative;
+  }
+  .heart svg{ width:100%; height:100%; }
+  #pulseWrap{
+    margin-top:10px; width:150px;
+  }
+  #pulseLabel{
+    font-size:0.6rem; letter-spacing:0.18em; color:var(--cyan); opacity:0.8; margin-bottom:3px;
+  }
+  #pulseBarOuter{
+    width:150px; height:10px; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(95,217,212,0.4); border-radius:2px; overflow:hidden;
+  }
+  #pulseBarInner{
+    height:100%; width:100%;
+    background:linear-gradient(90deg, var(--cyan), var(--amber));
+    transition:width 0.1s linear;
+  }
+  #eclipseIndicator{
+    display:flex; flex-direction:column; align-items:flex-end; gap:4px;
+  }
+  #eclipseLabel{
+    font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; opacity:0.85;
+  }
+  #eclipseDot{
+    width:26px; height:26px; border-radius:50%;
+    background:conic-gradient(var(--amber) var(--pct,0%), rgba(255,255,255,0.12) 0);
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid rgba(255,255,255,0.2);
+  }
+  #eclipseDot::after{
+    content:''; width:16px; height:16px; border-radius:50%;
+    background:var(--deepviolet);
+  }
+  #fragCount{
+    font-size:0.68rem; margin-top:8px; color:var(--amber); letter-spacing:0.08em;
+  }
+  #centerMsg{
+    position:fixed; top:38%; left:50%; transform:translate(-50%,-50%);
+    font-family:'Cinzel', serif; font-size:1.6rem; letter-spacing:0.08em;
+    color:var(--amber); text-shadow:0 0 20px rgba(246,198,103,0.6);
+    z-index:15; pointer-events:none; opacity:0; transition:opacity 0.4s ease;
+    text-align:center;
+  }
+
+  /* Touch controls */
+  #touchControls{
+    position:fixed; inset:0; z-index:12; pointer-events:none; display:none;
+  }
+  #touchControls.active{ display:block; }
+  #joyZone{
+    position:fixed; left:0; bottom:0; width:46%; height:52%;
+    pointer-events:auto;
+  }
+  #joyBase{
+    position:fixed; left:26px; bottom:26px; width:112px; height:112px; border-radius:50%;
+    border:2px solid rgba(207,210,255,0.5); background:rgba(20,14,40,0.35);
+    box-shadow:0 0 18px rgba(95,217,212,0.15), inset 0 0 20px rgba(0,0,0,0.3);
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  #joyBase.engaged{
+    border-color:var(--cyan);
+    box-shadow:0 0 26px rgba(95,217,212,0.4), inset 0 0 20px rgba(0,0,0,0.3);
+  }
+  #joyBase::before{
+    content:'◄  ►'; position:absolute; font-size:0.6rem; letter-spacing:0.3em;
+    color:rgba(207,210,255,0.4); bottom:-20px;
+  }
+  #joyStick{
+    width:50px; height:50px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--cyan), var(--violet) 70%);
+    box-shadow:0 0 14px rgba(95,217,212,0.6);
+    transition:transform 0.05s linear;
+  }
+  #actionZone{
+    position:fixed; right:0; bottom:0; width:54%; height:52%;
+    pointer-events:none;
+  }
+  .abtn{
+    position:absolute; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; font-weight:700;
+    color:var(--ghost); border:2px solid rgba(207,210,255,0.4);
+    background:rgba(36,26,74,0.55); pointer-events:auto; user-select:none;
+  }
+  .abtn:active{ background:rgba(95,217,212,0.35); transform:scale(0.94); }
+  #btnJump{ width:76px; height:76px; right:22px; bottom:110px; }
+  #btnDash{ width:60px; height:60px; right:112px; bottom:34px; }
+  #btnPulse{ width:70px; height:70px; right:20px; bottom:20px;
+    border-color:var(--amber); box-shadow:0 0 18px rgba(246,198,103,0.25);
+  }
+  #pauseBtn{
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    z-index:13; width:40px; height:40px; border-radius:50%;
+    background:rgba(36,26,74,0.55); border:1px solid rgba(207,210,255,0.3);
+    display:flex; align-items:center; justify-content:center; pointer-events:auto;
+  }
+  #pauseBtn span{ display:block; width:4px; height:16px; background:var(--ghost); margin:0 2px; border-radius:1px; }
+  #pauseBtn{ display:flex; }
+  #pauseBtn > div{ display:flex; }
+
+  @media (hover:none) and (pointer:coarse){
+    #touchControls{ display:block; }
+    #kbHint{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div>
+    <div id="hearts"></div>
+    <div id="pulseWrap">
+      <div id="pulseLabel">LIGHT CORE</div>
+      <div id="pulseBarOuter"><div id="pulseBarInner"></div></div>
+    </div>
+  </div>
+  <div id="eclipseIndicator">
+    <div id="eclipseLabel">LIGHT PHASE</div>
+    <div id="eclipseDot"></div>
+    <div id="fragCount">◆ 0</div>
+  </div>
+</div>
+<div id="centerMsg"></div>
+
+<div id="pauseBtn" class="hidden"><div><span></span><span></span></div></div>
+
+<!-- Touch controls -->
+<div id="touchControls">
+  <div id="joyZone">
+    <div id="joyBase"><div id="joyStick"></div></div>
+  </div>
+  <div id="actionZone">
+    <div class="abtn" id="btnJump">JUMP</div>
+    <div class="abtn" id="btnDash">DASH</div>
+    <div class="abtn" id="btnPulse">PULSE</div>
+  </div>
+</div>
+
+<!-- Main Menu -->
+<div class="screen" id="menuScreen">
+  <div class="menu-orb"></div>
+  <h1 class="title">ECLIPSE RUNNER</h1>
+  <div class="subtitle">Light &amp; Shadow · Platforming</div>
+  <button class="btn primary" id="startBtn">Start Run</button>
+  <button class="btn" id="howToBtn">How To Play</button>
+  <div class="info-block" id="kbHint">
+    <b>Keyboard:</b> Arrows/A-D move · Space jump (mid-air for double jump, or wall-jump off a wall) · Shift dash · E light pulse · Esc pause<br>
+    <b>Touch:</b> drag the ring bottom-left to move, tap Jump/Dash/Pulse bottom-right.
+  </div>
+</div>
+
+<!-- How to play -->
+<div class="screen hidden" id="howToScreen">
+  <h1 class="title" style="font-size:2rem;">The Rules of Light</h1>
+  <div class="info-block" style="max-width:520px;">
+    The world cycles between <b>Light</b> and <b>Eclipse</b>.<br><br>
+    In <b>Light</b>, hidden platforms fade from view and enemies see you clearly, but move slower.<br><br>
+    In <b>Eclipse</b>, some enemies go blind, but shadow spikes rise from the dark, and a <b>Seeker</b> hunts by sound alone — stay still, stay safe.<br><br>
+    Your <b>Light Pulse</b> reveals hidden platforms and stuns nearby shadow enemies. It costs energy — recharge by grabbing <b>Light Orbs</b> or waiting.<br><br>
+    Press against a wall in mid-air to <b>wall-slide</b>, then jump again to <b>wall-jump</b> off it.<br><br>
+    Near the end, the <b>Warden</b> guards a spike-lined gauntlet — it never sleeps, in light or dark. Pulse-stun it, then dash past.<br><br>
+    Collect <b>◆ Fragments</b> and reach the beacon at the end of the run.
+  </div>
+  <button class="btn primary" id="backBtn" style="margin-top:24px;">Got it</button>
+</div>
+
+<!-- Pause -->
+<div class="screen hidden" id="pauseScreen">
+  <h1 class="title" style="font-size:2rem;">Paused</h1>
+  <button class="btn primary" id="resumeBtn">Resume</button>
+  <button class="btn" id="restartBtn">Restart Run</button>
+  <button class="btn" id="quitBtn">Quit to Menu</button>
+</div>
+
+<!-- Game Over / Win -->
+<div class="screen hidden" id="endScreen">
+  <h1 class="title" id="endTitle">Run Complete</h1>
+  <div class="subtitle" id="endSubtitle">The eclipse fades</div>
+  <button class="btn primary" id="playAgainBtn">Play Again</button>
+  <button class="btn" id="endQuitBtn">Menu</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+// ---------- Canvas setup ----------
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+function resize(){
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth+'px';
+  canvas.style.height = window.innerHeight+'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const isTouch = matchMedia('(hover:none) and (pointer:coarse)').matches;
+
+// ---------- Audio (WebAudio synth, no asset files) ----------
+let actx = null;
+function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function beep(freq, dur, type, vol, sweep){
+  if(!actx) return;
+  const t0 = actx.currentTime;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.setValueAtTime(freq, t0);
+  if(sweep) osc.frequency.exponentialRampToValueAtTime(Math.max(20,sweep), t0+dur);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.linearRampToValueAtTime(vol||0.12, t0+0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(gain); gain.connect(actx.destination);
+  osc.start(t0); osc.stop(t0+dur+0.02);
+}
+const sfx = {
+  jump: ()=>beep(420,0.14,'square',0.08,620),
+  dash: ()=>beep(180,0.12,'sawtooth',0.09,80),
+  pulse: ()=>beep(260,0.35,'sine',0.14,900),
+  hurt: ()=>beep(120,0.3,'sawtooth',0.15,50),
+  orb: ()=>beep(760,0.12,'sine',0.1,1200),
+  frag: ()=>beep(880,0.22,'triangle',0.12,1400),
+  eclipseIn: ()=>beep(300,0.6,'sine',0.1,90),
+  eclipseOut: ()=>beep(220,0.6,'sine',0.1,700),
+  stun: ()=>beep(500,0.18,'square',0.09,180),
+  step: ()=>beep(90,0.05,'square',0.03,70),
+  win: ()=>{beep(523,0.2,'triangle',0.12,0); setTimeout(()=>beep(659,0.2,'triangle',0.12,0),140); setTimeout(()=>beep(784,0.3,'triangle',0.14,0),280);},
+  die: ()=>beep(160,0.5,'sawtooth',0.15,40),
+};
+
+// ---------- Game constants ----------
+const GRAVITY = 1900;
+const MOVE_SPEED = 300;
+const AIR_ACCEL = 1800;
+const GROUND_ACCEL = 3200;
+const FRICTION = 2600;
+const JUMP_VEL = -640;
+const DOUBLE_JUMP_VEL = -560;
+const DASH_SPEED = 780;
+const DASH_TIME = 0.16;
+const DASH_COOLDOWN = 0.7;
+const PULSE_RADIUS = 165;
+const PULSE_COST = 34;
+const PULSE_MAX = 100;
+const PULSE_REGEN = 6; // per second passive
+const LIGHT_PHASE_DUR = 15;
+const ECLIPSE_PHASE_DUR = 10;
+const WORLD_W = 4500;
+const GROUND_Y = 560;
+
+// ---------- Level data ----------
+// platforms: x, y, w, h, hidden(bool)
+function buildLevel(){
+  const plats = [
+    {x:-200,y:GROUND_Y,w:900,h:400,hidden:false},
+    {x:760,y:GROUND_Y,w:260,h:400,hidden:false},
+    {x:1120,y:460,w:140,h:26,hidden:false},
+    {x:1320,y:380,w:140,h:26,hidden:true},
+    {x:1520,y:460,w:160,h:26,hidden:false},
+    {x:1760,y:GROUND_Y,w:340,h:400,hidden:false},
+    {x:2180,y:420,w:120,h:26,hidden:true},
+    {x:2360,y:340,w:120,h:26,hidden:true},
+    {x:2540,y:460,w:150,h:26,hidden:false},
+    {x:2760,y:GROUND_Y,w:500,h:400,hidden:false},
+    {x:3320,y:500,w:180,h:26,hidden:false},
+    {x:3540,y:GROUND_Y,w:340,h:400,hidden:false},
+    // --- gauntlet / boss corridor ---
+    {x:3980,y:GROUND_Y,w:110,h:400,hidden:false},
+    {x:4230,y:GROUND_Y-70,w:70,h:20,hidden:false},
+    {x:4420,y:GROUND_Y,w:400,h:400,hidden:false},
+  ];
+  plats.forEach(p=>{ p.revealTimer = p.hidden ? 0 : 999; });
+
+  // gaps are implicit (no platform between segments)
+  const orbs = [
+    {x:840,y:410,taken:false},
+    {x:1180,y:410,taken:false},
+    {x:1580,y:410,taken:false},
+    {x:1900,y:GROUND_Y-60,taken:false},
+    {x:2240,y:370,taken:false},
+    {x:2600,y:410,taken:false},
+    {x:2960,y:GROUND_Y-60,taken:false},
+    {x:3380,y:450,taken:false},
+    {x:4030,y:GROUND_Y-70,taken:false},
+  ];
+  const fragments = [
+    {x:1370,y:330,taken:false},
+    {x:2410,y:290,taken:false},
+    {x:3040,y:GROUND_Y-120,taken:false},
+    {x:4265,y:GROUND_Y-110,taken:false},
+  ];
+  // shadow spikes: eclipse-only ones flagged always:false, gauntlet hazards are always live
+  const spikes = [
+    {x:1000,y:GROUND_Y-14,w:80,h:14,always:false},
+    {x:2860,y:GROUND_Y-14,w:100,h:14,always:false},
+    {x:3620,y:GROUND_Y-14,w:80,h:14,always:false},
+    {x:4090,y:GROUND_Y-14,w:140,h:14,always:true},
+    {x:4310,y:GROUND_Y-14,w:110,h:14,always:true},
+  ];
+  const enemies = [
+    {type:'shade', x:900, y:GROUND_Y-40, w:34,h:40, minX:820,maxX:990, dir:1, state:'patrol', stunTimer:0},
+    {type:'shade', x:1900, y:GROUND_Y-40, w:34,h:40, minX:1800,maxX:2060, dir:1, state:'patrol', stunTimer:0},
+    {type:'seeker', x:2100, y:400, w:30,h:30, dir:1, state:'wander', stunTimer:0, alertTimer:0, homeY:400},
+    {type:'shade', x:2900, y:GROUND_Y-40, w:34,h:40, minX:2820,maxX:3100, dir:1, state:'patrol', stunTimer:0},
+    {type:'seeker', x:3450, y:420, w:30,h:30, dir:-1, state:'wander', stunTimer:0, alertTimer:0, homeY:420},
+    {type:'warden', x:4200, y:GROUND_Y-70, w:52,h:70, minX:3960,maxX:4700, dir:1, state:'patrol', stunTimer:0},
+  ];
+  const goal = {x:4720, y:GROUND_Y-500, w:60, h:500};
+  return {plats, orbs, fragments, spikes, enemies, goal};
+}
+
+// ---------- Game state ----------
+let state = 'menu'; // menu, howto, playing, paused, win, dead
+let level = null;
+let player, camX = 0;
+let eclipse = { active:false, timer:LIGHT_PHASE_DUR };
+let pulseFX = null; // {x,y,r,alpha}
+let fragCollected = 0;
+let lastTime = 0;
+let noiseEvent = 0; // decays; >0 means noise recently made at player pos
+
+const keys = {};
+let joyVec = {x:0,y:0};
+const held = { jump:false, dash:false, pulse:false };
+let jumpPressedEdge = false;
+let dashPressedEdge = false;
+let pulsePressedEdge = false;
+
+function resetPlayer(){
+  player = {
+    x:0, y:GROUND_Y-70, w:34, h:56, vx:0, vy:0,
+    onGround:false, facing:1,
+    jumpsUsed:0, canDoubleJump:true, wallDir:0, animPhase:0,
+    dashTimer:0, dashCooldown:0, dashDir:1,
+    pulseEnergy:PULSE_MAX, hearts:3, invTimer:0,
+    stepTimer:0,
+  };
+}
+
+function startGame(){
+  level = buildLevel();
+  resetPlayer();
+  camX = 0;
+  eclipse = { active:false, timer:LIGHT_PHASE_DUR };
+  pulseFX = null;
+  fragCollected = 0;
+  noiseEvent = 0;
+  state = 'playing';
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('pauseBtn').classList.remove('hidden');
+  if(isTouch) document.getElementById('touchControls').classList.add('active');
+  flashCenterMsg('LIGHT PHASE', 1400);
+}
+
+function showScreen(id){
+  ['menuScreen','howToScreen','pauseScreen','endScreen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+function flashCenterMsg(text, dur){
+  const el = document.getElementById('centerMsg');
+  el.textContent = text;
+  el.style.opacity = '1';
+  clearTimeout(flashCenterMsg._t);
+  flashCenterMsg._t = setTimeout(()=>{ el.style.opacity='0'; }, dur||1200);
+}
+
+// ---------- Input ----------
+window.addEventListener('keydown', e=>{
+  ensureAudio();
+  keys[e.code] = true;
+  if(e.code==='Space') jumpPressedEdge = true;
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight') dashPressedEdge = true;
+  if(e.code==='KeyE') pulsePressedEdge = true;
+  if(e.code==='Escape') togglePause();
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+// Touch joystick
+const joyZone = document.getElementById('joyZone');
+const joyBase = document.getElementById('joyBase');
+const joyStick = document.getElementById('joyStick');
+let joyActive = false, joyTouchId = null;
+const maxR = 40;
+
+function joyCenter(){
+  const r = joyBase.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+function joyStart(clientX, clientY, id){
+  ensureAudio();
+  joyActive = true;
+  joyTouchId = id;
+  joyBase.classList.add('engaged');
+  joyMove(clientX, clientY);
+}
+function joyMove(clientX, clientY){
+  if(!joyActive) return;
+  const c = joyCenter();
+  let dx = clientX - c.x, dy = clientY - c.y;
+  const dist = Math.hypot(dx,dy);
+  if(dist>maxR){ dx = dx/dist*maxR; dy = dy/dist*maxR; }
+  joyStick.style.transform = `translate(${dx}px,${dy}px)`;
+  joyVec.x = dx/maxR; joyVec.y = dy/maxR;
+}
+function joyEnd(){
+  joyActive = false;
+  joyTouchId = null;
+  joyBase.classList.remove('engaged');
+  joyStick.style.transform = 'translate(0,0)';
+  joyVec.x=0; joyVec.y=0;
+}
+joyZone.addEventListener('touchstart', e=>{
+  const t = e.changedTouches[0];
+  joyStart(t.clientX, t.clientY, t.identifier);
+  e.preventDefault();
+}, {passive:false});
+joyZone.addEventListener('touchmove', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===joyTouchId){ joyMove(t.clientX,t.clientY); break; }
+  }
+  e.preventDefault();
+}, {passive:false});
+joyZone.addEventListener('touchend', e=>{
+  for(const t of e.changedTouches){ if(t.identifier===joyTouchId) joyEnd(); }
+  e.preventDefault();
+}, {passive:false});
+joyZone.addEventListener('touchcancel', joyEnd);
+
+function bindHold(id, key){
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', e=>{ ensureAudio(); held[key]=true; if(key==='jump') jumpPressedEdge=true; if(key==='dash') dashPressedEdge=true; if(key==='pulse') pulsePressedEdge=true; e.preventDefault(); }, {passive:false});
+  el.addEventListener('touchend', e=>{ held[key]=false; e.preventDefault(); }, {passive:false});
+  el.addEventListener('touchcancel', ()=>{ held[key]=false; });
+}
+bindHold('btnJump','jump');
+bindHold('btnDash','dash');
+bindHold('btnPulse','pulse');
+
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+function togglePause(){
+  if(state==='playing'){ state='paused'; showScreen('pauseScreen'); }
+  else if(state==='paused'){ state='playing'; showScreen(null); }
+}
+
+document.getElementById('startBtn').addEventListener('click', ()=>{ ensureAudio(); startGame(); });
+document.getElementById('howToBtn').addEventListener('click', ()=> showScreen('howToScreen'));
+document.getElementById('backBtn').addEventListener('click', ()=> showScreen('menuScreen'));
+document.getElementById('resumeBtn').addEventListener('click', ()=>{ state='playing'; showScreen(null); });
+document.getElementById('restartBtn').addEventListener('click', ()=> startGame());
+document.getElementById('quitBtn').addEventListener('click', ()=> quitToMenu());
+document.getElementById('playAgainBtn').addEventListener('click', ()=> startGame());
+document.getElementById('endQuitBtn').addEventListener('click', ()=> quitToMenu());
+
+function quitToMenu(){
+  state='menu';
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('pauseBtn').classList.add('hidden');
+  document.getElementById('touchControls').classList.remove('active');
+  showScreen('menuScreen');
+}
+
+// ---------- Collision helpers ----------
+function aabb(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+function activePlatforms(){
+  return level.plats.filter(p=> !p.hidden || p.revealTimer>0);
+}
+
+// ---------- Update ----------
+function update(dt){
+  if(state!=='playing') return;
+
+  // Eclipse cycle
+  eclipse.timer -= dt;
+  if(eclipse.timer<=0){
+    eclipse.active = !eclipse.active;
+    eclipse.timer = eclipse.active ? ECLIPSE_PHASE_DUR : LIGHT_PHASE_DUR;
+    if(eclipse.active){ sfx.eclipseIn(); flashCenterMsg('ECLIPSE', 1400); }
+    else { sfx.eclipseOut(); flashCenterMsg('LIGHT PHASE', 1400); }
+  }
+
+  // hidden platform reveal timers decay
+  level.plats.forEach(p=>{ if(p.hidden && p.revealTimer>0) p.revealTimer -= dt; });
+
+  noiseEvent -= dt;
+
+  // ---- Input resolution ----
+  let moveX = 0;
+  if(keys['ArrowLeft']||keys['KeyA']) moveX -= 1;
+  if(keys['ArrowRight']||keys['KeyD']) moveX += 1;
+  if(Math.abs(joyVec.x)>0.15) moveX = Math.max(-1,Math.min(1,joyVec.x*1.4));
+
+  const wantJump = jumpPressedEdge || (held.jump && false);
+  const wantDash = dashPressedEdge;
+  const wantPulse = pulsePressedEdge;
+  jumpPressedEdge=false; dashPressedEdge=false; pulsePressedEdge=false;
+
+  const p = player;
+  p.invTimer = Math.max(0, p.invTimer-dt);
+
+  // horizontal movement
+  if(p.dashTimer>0){
+    p.vx = p.dashDir * DASH_SPEED;
+  } else {
+    const accel = p.onGround ? GROUND_ACCEL : AIR_ACCEL;
+    if(moveX!==0){
+      p.vx += moveX*accel*dt;
+      p.vx = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, p.vx));
+      p.facing = moveX>0?1:-1;
+    } else if(p.onGround){
+      const s = Math.sign(p.vx);
+      p.vx -= s*FRICTION*dt;
+      if(Math.sign(p.vx)!==s) p.vx=0;
+    }
+  }
+
+  // jump (including wall jump)
+  if(wantJump){
+    if(p.onGround){
+      p.vy = JUMP_VEL; p.onGround=false; p.jumpsUsed=1; sfx.jump(); makeNoise();
+    } else if(p.wallDir!==0 && !p.onGround){
+      p.vy = JUMP_VEL*0.92;
+      p.vx = -p.wallDir*MOVE_SPEED*1.05;
+      p.facing = -p.wallDir;
+      p.jumpsUsed = 1;
+      p.wallDir = 0;
+      sfx.jump(); makeNoise();
+    } else if(p.jumpsUsed<2 && p.canDoubleJump){
+      p.vy = DOUBLE_JUMP_VEL; p.jumpsUsed=2; sfx.jump();
+    }
+  }
+
+  // dash
+  p.dashCooldown = Math.max(0,p.dashCooldown-dt);
+  if(wantDash && p.dashCooldown<=0 && p.dashTimer<=0){
+    p.dashTimer = DASH_TIME; p.dashCooldown = DASH_COOLDOWN;
+    p.dashDir = moveX!==0 ? Math.sign(moveX) : p.facing;
+    sfx.dash(); makeNoise();
+  }
+  if(p.dashTimer>0){ p.dashTimer -= dt; p.vy = 0; }
+
+  // pulse
+  if(wantPulse && p.pulseEnergy>=PULSE_COST && !pulseFX){
+    p.pulseEnergy -= PULSE_COST;
+    pulseFX = { x:p.x+p.w/2, y:p.y+p.h/2, r:10, alpha:1 };
+    sfx.pulse();
+    // reveal hidden platforms in radius
+    level.plats.forEach(pl=>{
+      if(pl.hidden){
+        const cx = pl.x+pl.w/2, cy = pl.y+pl.h/2;
+        if(Math.hypot(cx-pulseFX.x, cy-pulseFX.y) < PULSE_RADIUS+120) pl.revealTimer = 3.2;
+      }
+    });
+    // stun enemies in radius
+    level.enemies.forEach(en=>{
+      const cx = en.x+en.w/2, cy = en.y+en.h/2;
+      if(Math.hypot(cx-pulseFX.x, cy-pulseFX.y) < PULSE_RADIUS){
+        en.stunTimer = 2.2; sfx.stun();
+      }
+    });
+  }
+  p.pulseEnergy = Math.min(PULSE_MAX, p.pulseEnergy + PULSE_REGEN*dt);
+
+  if(pulseFX){
+    pulseFX.r += 620*dt;
+    pulseFX.alpha -= dt*2.6;
+    if(pulseFX.r>PULSE_RADIUS || pulseFX.alpha<=0) pulseFX=null;
+  }
+
+  // gravity
+  p.vy += GRAVITY*dt;
+  p.vy = Math.min(p.vy, 1400);
+
+  // integrate + collide X
+  p.x += p.vx*dt;
+  p.x = Math.max(-180, Math.min(WORLD_W-40, p.x));
+  const plats = activePlatforms();
+  p.wallDir = 0;
+  for(const pl of plats){
+    if(aabb(p,pl)){
+      if(p.vx>0){ p.x = pl.x - p.w; p.wallDir = 1; }
+      else if(p.vx<0){ p.x = pl.x + pl.w; p.wallDir = -1; }
+      p.vx = 0;
+    }
+  }
+  if(p.onGround) p.wallDir = 0;
+
+  // wall slide: dampen fall speed while pressed against a wall in the air
+  if(p.wallDir!==0 && !p.onGround && p.vy>60 && p.dashTimer<=0){
+    p.vy = Math.min(p.vy, 220);
+    p.jumpsUsed = 0; // wall contact refreshes air mobility
+  }
+
+  // integrate + collide Y
+  p.y += p.vy*dt;
+  p.onGround = false;
+  for(const pl of plats){
+    if(aabb(p,pl)){
+      if(p.vy>0){ p.y = pl.y - p.h; p.vy=0; p.onGround=true; p.jumpsUsed=0; }
+      else if(p.vy<0){ p.y = pl.y + pl.h; p.vy=0; }
+    }
+  }
+  if(p.y>1200){ playerDie(); return; }
+
+  // animation phase (for humanoid limb swing)
+  if(p.onGround && Math.abs(p.vx)>20){
+    p.animPhase = (p.animPhase||0) + dt*Math.min(10, 5+Math.abs(p.vx)/40);
+  } else if(p.onGround){
+    p.animPhase = (p.animPhase||0)*0.9;
+  }
+
+  // footstep noise while running on ground
+  if(p.onGround && Math.abs(p.vx)>120){
+    p.stepTimer -= dt;
+    if(p.stepTimer<=0){ p.stepTimer=0.28; sfx.step(); makeNoise(); }
+  }
+
+  // orbs
+  level.orbs.forEach(o=>{
+    if(!o.taken && Math.hypot((o.x)-(p.x+p.w/2), o.y-(p.y+p.h/2))<36){
+      o.taken=true; p.pulseEnergy = Math.min(PULSE_MAX, p.pulseEnergy+30); sfx.orb();
+    }
+  });
+  // fragments
+  level.fragments.forEach(f=>{
+    if(!f.taken && Math.hypot(f.x-(p.x+p.w/2), f.y-(p.y+p.h/2))<38){
+      f.taken=true; fragCollected++; sfx.frag(); flashCenterMsg('FRAGMENT COLLECTED', 1000);
+    }
+  });
+
+  // spikes (eclipse-only shadow spikes, plus always-on gauntlet hazards)
+  if(p.invTimer<=0){
+    for(const sp of level.spikes){
+      const live = sp.always || eclipse.active;
+      if(live && aabb(p,sp)){ damagePlayer(); break; }
+    }
+  }
+
+  // gauntlet warning banner
+  if(!level._wardenWarned && p.x>3760){
+    level._wardenWarned = true;
+    flashCenterMsg('THE WARDEN AWAKENS', 1600);
+  }
+
+  // enemies
+  level.enemies.forEach(en=>{
+    updateEnemy(en, dt);
+    if(en.stunTimer<=0 && p.invTimer<=0){
+      if(aabb(p, en)){ damagePlayer(); }
+    }
+  });
+
+  // goal
+  const g = level.goal;
+  if(p.x+p.w>g.x && p.x<g.x+g.w && p.y+p.h>g.y && p.y<g.y+g.h){
+    winGame();
+  }
+
+  // camera
+  const targetCam = p.x - window.innerWidth/2 + p.w/2;
+  camX += (targetCam-camX)*Math.min(1, dt*6);
+  camX = Math.max(-220, Math.min(WORLD_W-window.innerWidth+220, camX));
+}
+
+function makeNoise(){ noiseEvent = 0.5; }
+
+function updateEnemy(en, dt){
+  en.stunTimer = Math.max(0, en.stunTimer-dt);
+  if(en.stunTimer>0) return;
+
+  if(en.type==='shade'){
+    const speed = eclipse.active ? 70 : 40; // slower in light (per doc: slow during light phase)
+    const canSee = !eclipse.active || Math.abs(player.x-en.x)<130;
+    if(canSee && Math.abs(player.x-en.x)<260 && Math.abs(player.y-en.y)<80){
+      en.state='chase';
+      en.dir = player.x>en.x ? 1 : -1;
+      en.x += en.dir*(speed+40)*dt;
+    } else {
+      en.state='patrol';
+      en.x += en.dir*speed*dt;
+      if(en.x<en.minX){ en.x=en.minX; en.dir=1; }
+      if(en.x>en.maxX){ en.x=en.maxX; en.dir=-1; }
+    }
+  } else if(en.type==='warden'){
+    // ignores light/eclipse rules entirely; relentless within its corridor
+    const dist = Math.abs(player.x-en.x);
+    if(dist<560){
+      en.state='chase';
+      en.dir = player.x>en.x ? 1 : -1;
+      en.x += en.dir*150*dt;
+    } else {
+      en.state='patrol';
+      en.x += en.dir*55*dt;
+      if(en.x<en.minX){ en.x=en.minX; en.dir=1; }
+      if(en.x>en.maxX){ en.x=en.maxX; en.dir=-1; }
+    }
+    en.x = Math.max(en.minX, Math.min(en.maxX, en.x));
+  } else if(en.type==='seeker'){
+    // homes in on sound, ignores light/dark
+    const dist = Math.hypot(player.x-en.x, player.y-en.y);
+    if(noiseEvent>0 && dist<420){ en.alertTimer = 2.2; }
+    en.alertTimer = Math.max(0, en.alertTimer-dt);
+    if(en.alertTimer>0){
+      en.state='chase';
+      const dx = player.x-en.x, dy = player.y-en.y;
+      const d = Math.hypot(dx,dy)||1;
+      en.x += (dx/d)*130*dt;
+      en.y += (dy/d)*130*dt;
+    } else {
+      en.state='wander';
+      en.x += en.dir*30*dt;
+      en.y = en.homeY + Math.sin(performance.now()/900)*14;
+    }
+  }
+}
+
+function damagePlayer(){
+  player.hearts -= 1;
+  player.invTimer = 1.4;
+  sfx.hurt();
+  player.vy = -400;
+  player.vx = player.facing*-260;
+  if(player.hearts<=0){ playerDie(); }
+}
+
+function playerDie(){
+  if(state!=='playing') return;
+  state='dead';
+  sfx.die();
+  document.getElementById('endTitle').textContent = 'Consumed by Shadow';
+  document.getElementById('endSubtitle').textContent = `Fragments recovered: ${fragCollected}`;
+  showScreen('endScreen');
+}
+function winGame(){
+  if(state!=='playing') return;
+  state='win';
+  sfx.win();
+  document.getElementById('endTitle').textContent = 'Eclipse Cleared';
+  document.getElementById('endSubtitle').textContent = `Fragments recovered: ${fragCollected} / ${level.fragments.length}`;
+  showScreen('endScreen');
+}
+
+// ---------- Render ----------
+function drawHumanoid(p, eclipseActive){
+  ctx.save();
+  ctx.translate(p.x+p.w/2, p.y+p.h);
+  ctx.scale(p.facing,1);
+
+  const bodyColor = eclipseActive ? '#dfe1ff' : '#141024';
+  ctx.strokeStyle = bodyColor;
+  ctx.fillStyle = bodyColor;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  const hipY = -24, shoulderY = -44, headY = -52, headR = 8;
+  const legLen1 = 13, legLen2 = 13, armLen1 = 10, armLen2 = 10;
+
+  let mode = 'idle';
+  if(!p.onGround){ mode = p.wallDir!==0 ? 'wall' : 'air'; }
+  else if(Math.abs(p.vx)>20){ mode = 'run'; }
+  if(p.dashTimer>0) mode = 'dash';
+
+  const phase = p.animPhase||0;
+  let lLeg, rLeg, lArm, rArm, lean=0;
+  if(mode==='run'){
+    lLeg = Math.sin(phase)*0.95; rLeg = Math.sin(phase+Math.PI)*0.95;
+    lArm = Math.sin(phase+Math.PI)*0.7; rArm = Math.sin(phase)*0.7;
+    lean = 0.12;
+  } else if(mode==='air'){
+    lLeg=-0.55; rLeg=0.65; lArm=-0.95; rArm=0.55; lean=-0.05;
+  } else if(mode==='wall'){
+    lLeg=1.3; rLeg=1.25; lArm=-1.4; rArm=0.35; lean=0.2*p.wallDir;
+  } else if(mode==='dash'){
+    lLeg=-0.95; rLeg=0.95; lArm=1.25; rArm=-1.0; lean=0.55;
+  } else {
+    const idlePhase = performance.now()/500;
+    lLeg = Math.sin(idlePhase)*0.05; rLeg=-lLeg;
+    lArm = 0.12; rArm=-0.12;
+  }
+
+  function limb(ox,oy,angle,len1,bend,len2,width){
+    const x1 = ox+Math.sin(angle)*len1, y1 = oy+Math.cos(angle)*len1;
+    const a2 = angle+bend;
+    const x2 = x1+Math.sin(a2)*len2, y2 = y1+Math.cos(a2)*len2;
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(x1,y1); ctx.lineTo(x2,y2);
+    ctx.lineWidth = width; ctx.stroke();
+    return {x:x2,y:y2};
+  }
+
+  ctx.save();
+  ctx.rotate(lean*0.15);
+
+  // back limbs (drawn first, further leg/arm)
+  limb(0,hipY, rLeg, legLen1, 0.55, legLen2, 6);
+  limb(0,shoulderY, rArm, armLen1, 0.35, armLen2, 5.5);
+
+  // torso (slight lean)
+  ctx.beginPath();
+  ctx.moveTo(0,hipY);
+  ctx.lineTo(lean*10, shoulderY);
+  ctx.lineWidth = 9;
+  ctx.stroke();
+
+  // head
+  ctx.beginPath();
+  ctx.arc(lean*12, headY, headR, 0, 7);
+  ctx.fill();
+
+  // front limbs
+  limb(0,hipY, lLeg, legLen1, 0.55, legLen2, 6.5);
+  const handPos = limb(lean*10,shoulderY, lArm, armLen1, 0.3, armLen2, 6);
+
+  ctx.restore();
+
+  // light core glow at chest (visible through silhouette)
+  const coreY = (hipY+shoulderY)/2;
+  const glowPulse = 3.5+Math.sin(performance.now()/180)*1.2;
+  const cg = ctx.createRadialGradient(0,coreY,0,0,coreY,glowPulse*3);
+  cg.addColorStop(0,'rgba(95,217,212,0.95)');
+  cg.addColorStop(1,'rgba(95,217,212,0)');
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.arc(0,coreY,glowPulse*3,0,7); ctx.fill();
+  ctx.fillStyle = '#5fd9d4';
+  ctx.beginPath(); ctx.arc(0,coreY,glowPulse*0.7,0,7); ctx.fill();
+
+  // dash motion streak
+  if(mode==='dash'){
+    ctx.globalAlpha = 0.35;
+    for(let i=1;i<=3;i++){
+      ctx.fillStyle = 'rgba(207,210,255,'+(0.18/i)+')';
+      ctx.beginPath();
+      ctx.ellipse(-i*14, hipY+10, 16, 22, 0,0,7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function render(){
+  const w = window.innerWidth, h = window.innerHeight;
+  // background
+  const bgTop = eclipse.active ? '#1c1440' : '#2b3e6b';
+  const bgBot = eclipse.active ? '#0a0718' : '#1a2440';
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, eclipse.active? '#241a4a' : '#3a5a8a');
+  grad.addColorStop(0.55, bgTop);
+  grad.addColorStop(1, bgBot);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,w,h);
+
+  if(state==='menu' || state==='howto') return;
+
+  // parallax stars/moon-sun
+  ctx.save();
+  const orbX = w*0.78 - camX*0.05;
+  const orbY = h*0.18;
+  ctx.beginPath();
+  const orbGrad = ctx.createRadialGradient(orbX,orbY,4,orbX,orbY,70);
+  if(eclipse.active){
+    orbGrad.addColorStop(0,'rgba(95,217,212,0.9)');
+    orbGrad.addColorStop(1,'rgba(95,217,212,0)');
+  } else {
+    orbGrad.addColorStop(0,'rgba(246,198,103,0.95)');
+    orbGrad.addColorStop(1,'rgba(246,198,103,0)');
+  }
+  ctx.fillStyle = orbGrad;
+  ctx.arc(orbX,orbY,70,0,7); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(-camX, 0);
+
+  // distant silhouette hills (parallax)
+  ctx.fillStyle = eclipse.active? 'rgba(20,14,40,0.7)' : 'rgba(30,40,70,0.6)';
+  ctx.beginPath();
+  ctx.moveTo(-300+camX*0.3, h);
+  for(let x=-300; x<WORLD_W+300; x+=200){
+    ctx.lineTo(x+camX*0.3, h-140 - 40*Math.sin(x*0.004));
+  }
+  ctx.lineTo(WORLD_W+300+camX*0.3, h);
+  ctx.closePath(); ctx.fill();
+
+  if(state!=='playing' && state!=='paused' && state!=='dead' && state!=='win'){ ctx.restore(); return; }
+  if(!level){ ctx.restore(); return; }
+
+  // platforms
+  level.plats.forEach(pl=>{
+    let visible = !pl.hidden || pl.revealTimer>0;
+    if(!visible) return;
+    let alpha = pl.hidden ? Math.min(1, pl.revealTimer/1) : 1;
+    ctx.fillStyle = pl.hidden ? `rgba(95,217,212,${0.55+0.3*Math.sin(performance.now()/150)})` : (eclipse.active?'#100a24':'#152244');
+    ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
+    ctx.fillStyle = pl.hidden ? 'rgba(207,210,255,0.5)' : 'rgba(95,217,212,0.18)';
+    ctx.fillRect(pl.x, pl.y, pl.w, 4);
+  });
+
+  // spikes
+  level.spikes.forEach(sp=>{
+    const live = sp.always || eclipse.active;
+    if(!live){
+      ctx.fillStyle='rgba(232,115,74,0.15)';
+      ctx.fillRect(sp.x,sp.y-4,sp.w,4);
+      return;
+    }
+    ctx.fillStyle = sp.always ? '#a8324f' : '#8b2e5c';
+    const n = Math.floor(sp.w/16);
+    for(let i=0;i<n;i++){
+      ctx.beginPath();
+      ctx.moveTo(sp.x+i*16, sp.y+sp.h);
+      ctx.lineTo(sp.x+i*16+8, sp.y-10);
+      ctx.lineTo(sp.x+i*16+16, sp.y+sp.h);
+      ctx.closePath(); ctx.fill();
+    }
+  });
+
+  // orbs
+  level.orbs.forEach(o=>{
+    if(o.taken) return;
+    const bob = Math.sin(performance.now()/300 + o.x)*4;
+    ctx.beginPath();
+    const og = ctx.createRadialGradient(o.x,o.y+bob,1,o.x,o.y+bob,14);
+    og.addColorStop(0,'rgba(246,198,103,1)'); og.addColorStop(1,'rgba(246,198,103,0)');
+    ctx.fillStyle=og; ctx.arc(o.x,o.y+bob,14,0,7); ctx.fill();
+    ctx.fillStyle='#f6c667';
+    ctx.beginPath(); ctx.arc(o.x,o.y+bob,4.5,0,7); ctx.fill();
+  });
+  // fragments
+  level.fragments.forEach(f=>{
+    if(f.taken) return;
+    const bob = Math.sin(performance.now()/250 + f.x)*5;
+    ctx.save();
+    ctx.translate(f.x, f.y+bob);
+    ctx.rotate(performance.now()/700);
+    ctx.fillStyle = '#5fd9d4';
+    ctx.beginPath();
+    ctx.moveTo(0,-11); ctx.lineTo(9,0); ctx.lineTo(0,11); ctx.lineTo(-9,0); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // enemies
+  level.enemies.forEach(en=>{
+    ctx.save();
+    if(en.stunTimer>0){
+      ctx.fillStyle = 'rgba(95,217,212,0.85)';
+    } else if(en.type==='shade'){
+      ctx.fillStyle = eclipse.active? 'rgba(30,20,50,0.9)' : '#1a1030';
+    } else if(en.type==='warden'){
+      ctx.fillStyle = '#3a0e22';
+    } else {
+      ctx.fillStyle = eclipse.active? '#5a1030' : '#3a1428';
+    }
+    if(en.type==='shade'){
+      ctx.beginPath();
+      ctx.ellipse(en.x+en.w/2, en.y+en.h/2, en.w/2, en.h/2, 0,0,7);
+      ctx.fill();
+      ctx.fillStyle='rgba(232,115,74,0.85)';
+      ctx.beginPath(); ctx.arc(en.x+en.w/2+(en.dir*4), en.y+en.h*0.35, 2.6,0,7); ctx.fill();
+    } else if(en.type==='warden'){
+      const cx = en.x+en.w/2, cy = en.y+en.h/2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, en.w/2, en.h/2, 0, 0, 7);
+      ctx.fill();
+      // jagged shoulder spikes
+      ctx.fillStyle = '#a8324f';
+      for(let i=-1;i<=1;i++){
+        ctx.beginPath();
+        ctx.moveTo(cx+i*16, en.y+4);
+        ctx.lineTo(cx+i*16-6, en.y-14);
+        ctx.lineTo(cx+i*16+6, en.y-14);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = en.stunTimer>0 ? 'rgba(255,255,255,0.9)' : 'rgba(232,115,74,0.9)';
+      ctx.beginPath(); ctx.arc(cx+(en.dir*6), cy-8, 3.4, 0, 7); ctx.fill();
+      if(en.stunTimer<=0){
+        ctx.strokeStyle='rgba(168,50,79,0.5)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(cx,cy, en.w/2+8+Math.sin(performance.now()/90)*3, 0, 7); ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.arc(en.x+en.w/2, en.y+en.h/2, en.w/2, 0,7);
+      ctx.fill();
+      if(en.stunTimer<=0 && en.alertTimer>0){
+        ctx.strokeStyle='rgba(232,115,74,0.6)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(en.x+en.w/2, en.y+en.h/2, en.w/2+6+Math.sin(performance.now()/100)*2,0,7); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  });
+
+  // goal beacon
+  const g = level.goal;
+  ctx.save();
+  const bg = ctx.createLinearGradient(g.x,g.y,g.x,g.y+g.h);
+  bg.addColorStop(0,'rgba(246,198,103,0.5)'); bg.addColorStop(1,'rgba(95,217,212,0.05)');
+  ctx.fillStyle=bg;
+  ctx.fillRect(g.x+g.w/2-3, g.y, 6, g.h);
+  ctx.beginPath();
+  ctx.fillStyle='#f6c667';
+  ctx.arc(g.x+g.w/2, g.y, 12+Math.sin(performance.now()/300)*3, 0, 7);
+  ctx.fill();
+  ctx.restore();
+
+  // player
+  if(player){
+    const flick = player.invTimer>0 ? (Math.floor(performance.now()/80)%2===0) : true;
+    if(flick) drawHumanoid(player, eclipse.active);
+  }
+
+  // pulse effect
+  if(pulseFX){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0,pulseFX.alpha);
+    const pg = ctx.createRadialGradient(pulseFX.x,pulseFX.y,0,pulseFX.x,pulseFX.y,pulseFX.r);
+    pg.addColorStop(0,'rgba(246,198,103,0.4)');
+    pg.addColorStop(0.7,'rgba(95,217,212,0.25)');
+    pg.addColorStop(1,'rgba(95,217,212,0)');
+    ctx.fillStyle=pg;
+    ctx.beginPath(); ctx.arc(pulseFX.x,pulseFX.y,pulseFX.r,0,7); ctx.fill();
+    ctx.strokeStyle='rgba(207,210,255,0.5)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(pulseFX.x,pulseFX.y,pulseFX.r,0,7); ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // eclipse dark overlay vignette
+  if(eclipse.active){
+    ctx.save();
+    const vg = ctx.createRadialGradient(w/2,h/2,h*0.15,w/2,h/2,h*0.75);
+    vg.addColorStop(0,'rgba(5,3,15,0)');
+    vg.addColorStop(1,'rgba(5,3,15,0.55)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+}
+
+function updateHUD(){
+  if(!player) return;
+  const heartsEl = document.getElementById('hearts');
+  heartsEl.innerHTML = '';
+  for(let i=0;i<3;i++){
+    const filled = i<player.hearts;
+    heartsEl.innerHTML += `<div class="heart"><svg viewBox="0 0 20 18"><path d="M10 17 C4 12 1 9 1 5.5 C1 2.5 3.2 1 5.5 1 C7.5 1 9 2.3 10 4 C11 2.3 12.5 1 14.5 1 C16.8 1 19 2.5 19 5.5 C19 9 16 12 10 17 Z" fill="${filled?'#e8734a':'rgba(255,255,255,0.12)'}" stroke="${filled?'#f6c667':'rgba(255,255,255,0.2)'}" stroke-width="1"/></svg></div>`;
+  }
+  document.getElementById('pulseBarInner').style.width = (player.pulseEnergy/PULSE_MAX*100)+'%';
+  document.getElementById('eclipseLabel').textContent = eclipse.active ? 'ECLIPSE' : 'LIGHT PHASE';
+  const dur = eclipse.active ? ECLIPSE_PHASE_DUR : LIGHT_PHASE_DUR;
+  const pct = Math.max(0,Math.min(100,(1-eclipse.timer/dur)*100));
+  document.getElementById('eclipseDot').style.setProperty('--pct', pct+'%');
+  document.getElementById('fragCount').textContent = `◆ ${fragCollected}`;
+}
+
+// ---------- Main loop ----------
+function loop(ts){
+  if(!lastTime) lastTime = ts;
+  let dt = (ts-lastTime)/1000;
+  dt = Math.min(dt, 0.033);
+  lastTime = ts;
+  update(dt);
+  render();
+  updateHUD();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* fine if this fails, e.g. on file:// */ });
+  });
+}
+
+})();
+</script>
+</body>
+</html>
