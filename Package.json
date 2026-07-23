@@ -1,0 +1,22 @@
+{
+  "name": "eclipse-runner",
+  "version": "1.0.0",
+  "description": "Eclipse Runner desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.gabriel.eclipserunner",
+    "productName": "Eclipse Runner",
+    "files": ["index.html", "icon.png", "main.js", "package.json"],
+    "mac": { "icon": "icon.png", "target": "dmg" },
+    "win": { "icon": "icon.png", "target": "nsis" },
+    "linux": { "icon": "icon.png", "target": "AppImage" }
+  }
+}
